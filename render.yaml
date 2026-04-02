@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: edtech-tts-server
+    runtime: node
+    buildCommand: npm install
+    startCommand: node server.mjs
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production

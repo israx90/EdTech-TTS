@@ -10,12 +10,15 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "deploy": "gh-pages -d dist",
+    "generate-demos": "node scripts/generate-demos.mjs"
   },
   "dependencies": {
     "cors": "^2.8.6",
     "edge-tts-universal": "^1.4.0",
     "express": "^5.2.1",
+    "kokoro-js": "^1.1.0",
     "lucide-react": "^1.7.0",
     "mammoth": "^1.12.0",
     "pdfjs-dist": "^5.6.205",
@@ -31,6 +34,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "gh-pages": "^6.3.0",
     "globals": "^17.4.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",

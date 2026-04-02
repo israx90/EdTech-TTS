@@ -7,11 +7,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
+
+// CORS: allow GitHub Pages + localhost
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://israx90.github.io'
+  ],
+  methods: ['POST', 'GET', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}));
+
 app.use(express.json({ limit: '5mb' }));
 
 // ═══════════════════════════════════════════════
-// Endpoint 1: Microsoft Edge TTS (Azure Neural)
+// Endpoint: Microsoft Edge TTS (Azure Neural)
 // ═══════════════════════════════════════════════
 app.post('/api/tts', async (req, res) => {
   const { text, voice } = req.body;
@@ -38,86 +49,17 @@ app.post('/api/tts', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
-// Endpoint 2: Google Translate TTS
+// Health check (for Render monitoring)
 // ═══════════════════════════════════════════════
-app.post('/api/google-tts', async (req, res) => {
-  const { text, lang } = req.body;
-  
-  if (!text) {
-    return res.status(400).json({ error: 'Missing text' });
-  }
-
-  const language = lang || 'es';
-
-  try {
-    const chunks = splitForGoogle(text, 190);
-    const audioBuffers = [];
-
-    for (const chunk of chunks) {
-      const encoded = encodeURIComponent(chunk);
-      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encoded}&tl=${language}&client=tw-ob&ttsspeed=1`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-          'Referer': 'https://translate.google.com/'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Google TTS returned ${response.status}`);
-      }
-
-      const arrayBuffer = await response.arrayBuffer();
-      audioBuffers.push(Buffer.from(arrayBuffer));
-    }
-
-    const finalBuffer = Buffer.concat(audioBuffers);
-    
-    res.set('Content-Type', 'audio/mpeg');
-    res.set('Content-Length', finalBuffer.length);
-    res.send(finalBuffer);
-  } catch (err) {
-    console.error('Google TTS Error:', err);
-    res.status(500).json({ error: err.message || 'Google TTS failed' });
-  }
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', engine: 'edge-tts', timestamp: Date.now() });
 });
 
-function splitForGoogle(text, maxLen = 190) {
-  const result = [];
-  let pos = 0;
-  
-  while (pos < text.length) {
-    if (text.length - pos <= maxLen) {
-      result.push(text.slice(pos));
-      break;
-    }
-    
-    let end = pos + maxLen;
-    const section = text.substring(pos, end);
-    const lastPeriod = section.lastIndexOf('. ');
-    const lastComma = section.lastIndexOf(', ');
-    const lastSpace = section.lastIndexOf(' ');
-    
-    if (lastPeriod > maxLen / 2) {
-      end = pos + lastPeriod + 2;
-    } else if (lastComma > maxLen / 2) {
-      end = pos + lastComma + 2;
-    } else if (lastSpace > maxLen / 2) {
-      end = pos + lastSpace + 1;
-    }
-    
-    result.push(text.slice(pos, end));
-    pos = end;
-  }
-  return result;
-}
-
 // ═══════════════════════════════════════════════
-// SERVE FRONTEND (Para producción en Render/Railway)
+// SERVE FRONTEND (Para producción local)
 // ═══════════════════════════════════════════════
 app.use(express.static(path.join(__dirname, 'dist')));
-app.get('*', (req, res) => {
+app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
@@ -126,5 +68,5 @@ app.listen(PORT, () => {
   console.log(`🎙️  TTS Server corriendo en el puerto ${PORT}`);
   console.log(`   ├─ Frontend:   http://localhost:${PORT}`);
   console.log(`   ├─ Edge TTS:   POST /api/tts`);
-  console.log(`   └─ Google TTS: POST /api/google-tts`);
+  console.log(`   └─ Health:     GET /api/health`);
 });
