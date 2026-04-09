@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UploadCloud, FileText, Play, Pause, Download, CheckCircle2, Loader2, Music, Sparkles, Clock, Volume2, Square, Cpu, Globe, Mic, Server, Wifi, WifiOff, RefreshCw, X, Package, Trash2 } from 'lucide-react';
+import { UploadCloud, FileText, Play, Pause, Download, CheckCircle2, Loader2, Music, Sparkles, Clock, Volume2, Square, Cpu, Globe, Mic, Server, Wifi, WifiOff, RefreshCw, X, Package, Trash2, Tag } from 'lucide-react';
 import { parseDocument } from './utils/DocumentParser';
 import { processTextToAudioBlob, playVoiceDemo, stopVoiceDemo, getWebSpeechVoices, checkServerHealth } from './utils/TTSProcessor';
 import JSZip from 'jszip';
@@ -18,11 +18,45 @@ interface BatchItem {
   wordCount: number;
 }
 
+// ═══════════════════════════════════════════
+// Release Notes / Changelog
+// ═══════════════════════════════════════════
+const APP_VERSION = 'v2.4.0';
+const RELEASE_LOG = [
+  {
+    version: 'v2.4.0',
+    date: '2026-04-09',
+    changes: [
+      'DOCX: Tablas reemplazadas por placeholders verbales para TTS',
+      'DOCX: Detección dual de títulos (celda + párrafo anterior)',
+      'DOCX: Limpieza de captions post-tabla',
+      'PDF: Detección y omisión de carátulas/portadas',
+      'PDF: Normalización fuzzy de headers ("• 17 •" = "• 18 •")',
+      'PDF: Patrones expandidos de numeración decorativa',
+      'PDF: Umbral de repetición reducido (50% → 30%)',
+      'PDF: Filtro endurecido para texto corto en headers/footers',
+    ],
+  },
+  {
+    version: 'v2.3.0',
+    date: '2026-04-02',
+    changes: [
+      'Procesamiento batch multi-archivo (PDF, DOCX, TXT)',
+      'Cola de conversión secuencial con estado individual',
+      'Descarga ZIP para múltiples archivos',
+      'Filtrado básico de headers/footers en PDF',
+    ],
+  },
+];
+
 function App() {
   // Batch queue
   const [items, setItems] = useState<BatchItem[]>([]);
   const [isBatchProcessing, setIsBatchProcessing] = useState(false);
   const [modelLoading, setModelLoading] = useState<string>('');
+  
+  // Release modal
+  const [showRelease, setShowRelease] = useState(false);
   
   const [provider, setProvider] = useState('edge-tts');
   const [voice, setVoice] = useState('es-MX-DaliaNeural');
@@ -341,11 +375,54 @@ function App() {
           </h1>
           <div className="brand-subtitle">Text-to-Speech Processing Engine</div>
         </div>
-        <div className="status-badge">
-          <div className="status-dot"></div>
-          Platform Active
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button
+            className="release-btn"
+            onClick={() => setShowRelease(true)}
+            title="Notas de versión"
+          >
+            <Tag size={14} />
+            {APP_VERSION}
+          </button>
+          <div className="status-badge">
+            <div className="status-dot"></div>
+            Platform Active
+          </div>
         </div>
       </header>
+
+      {/* Release Notes Modal */}
+      {showRelease && (
+        <div className="release-overlay" onClick={() => setShowRelease(false)}>
+          <div className="release-modal" onClick={e => e.stopPropagation()}>
+            <div className="release-modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Tag size={18} className="text-cyber-teal" />
+                <span>Release Notes</span>
+              </div>
+              <button className="release-close-btn" onClick={() => setShowRelease(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="release-modal-body">
+              {RELEASE_LOG.map((release, idx) => (
+                <div key={release.version} className={`release-entry ${idx === 0 ? 'latest' : ''}`}>
+                  <div className="release-entry-header">
+                    <span className="release-version">{release.version}</span>
+                    {idx === 0 && <span className="release-latest-tag">LATEST</span>}
+                    <span className="release-date">{release.date}</span>
+                  </div>
+                  <ul className="release-changes">
+                    {release.changes.map((change, i) => (
+                      <li key={i}>{change}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid-2">
         {/* Left: Document Upload + Queue */}
