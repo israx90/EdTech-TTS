@@ -31,6 +31,7 @@ const RELEASE_LOG = [
       'Algoritmo de detección con 3 estrategias contextuales (alta, media, referencias legales)',
       'Protección anti-falsos positivos para letras sueltas (I, C, D, M)',
       'Prefijos de contexto académico (UNIDAD, Capítulo, inciso, cuadro, etc.)',
+      'TTS: Limpieza de guiones bajos, múltiples y aislados para evitar lectura de símbolos',
     ],
   },
   {

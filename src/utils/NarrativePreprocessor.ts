@@ -59,6 +59,11 @@ export function prepareTextForNarration(rawText: string): string {
   // 7. Agregar pausas en viñetas y guiones de lista
   text = text.replace(/^[\-•]\s*/gm, '... ');
 
+  // 7.5. Eliminar guiones bajos y guiones repetidos/aislados que la voz podría deletrear
+  text = text.replace(/_+/g, ' '); // Todos los guiones bajos
+  text = text.replace(/[-—–]{2,}/g, ' ... '); // Cadenas de múltiples guiones
+  text = text.replace(/\s+[-—–]\s+/g, ' ... '); // Guiones aislados entre espacios
+
   // 8. Limpiar espacios excesivos finales
   text = text.replace(/\s{3,}/g, '  ');
   text = text.trim();
