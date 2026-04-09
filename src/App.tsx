@@ -21,8 +21,18 @@ interface BatchItem {
 // ═══════════════════════════════════════════
 // Release Notes / Changelog
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v2.4.0';
+const APP_VERSION = 'v2.5.0';
 const RELEASE_LOG = [
+  {
+    version: 'v2.5.0',
+    date: '2026-04-09',
+    changes: [
+      'TTS: Conversión inteligente de números romanos a arábigos (VI → 6)',
+      'Algoritmo de detección con 3 estrategias contextuales (alta, media, referencias legales)',
+      'Protección anti-falsos positivos para letras sueltas (I, C, D, M)',
+      'Prefijos de contexto académico (UNIDAD, Capítulo, inciso, cuadro, etc.)',
+    ],
+  },
   {
     version: 'v2.4.0',
     date: '2026-04-09',

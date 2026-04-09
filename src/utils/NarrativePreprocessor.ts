@@ -50,6 +50,9 @@ export function prepareTextForNarration(rawText: string): string {
   text = text.replace(/:\s*/g, ': ... ');
   text = text.replace(/;\s*/g, '; ');
 
+  // 5.5. Convertir números romanos a arábigos para narración natural
+  text = convertRomanNumerals(text);
+
   // 6. Asegurar que los números de lista tengan pausa
   text = text.replace(/(\d+)\.\s/g, '$1. ... ');
 
@@ -124,4 +127,99 @@ function breakLongSegmentsAtY(text: string): string {
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ═══════════════════════════════════════════
+// Conversión de Números Romanos a Arábigos
+// ═══════════════════════════════════════════
+
+// Prefijos legales/académicos que preceden números romanos con alta confianza
+const ROMAN_PREFIXES = [
+  'unidad', 'capítulo', 'capitulo', 'título', 'titulo',
+  'sección', 'seccion', 'artículo', 'articulo', 'art\\.',
+  'parágrafo', 'paragrafo', 'inciso', 'numeral',
+  'cuadro', 'tabla', 'figura', 'libro', 'tomo',
+  'volumen', 'parte', 'anexo', 'ley',
+];
+
+/**
+ * Convierte un número romano a su equivalente arábigo.
+ * Retorna null si no es un romano válido.
+ */
+function romanToArabic(roman: string): number | null {
+  const values: Record<string, number> = {
+    'I': 1, 'V': 5, 'X': 10, 'L': 50, 'C': 100, 'D': 500, 'M': 1000
+  };
+  const upper = roman.toUpperCase();
+
+  // Solo debe contener caracteres romanos válidos
+  if (!/^[IVXLCDM]+$/i.test(upper)) return null;
+
+  let result = 0;
+  for (let i = 0; i < upper.length; i++) {
+    const current = values[upper[i]];
+    const next = values[upper[i + 1]] || 0;
+    if (current < next) {
+      result -= current; // Sustractivo: IV=4, IX=9, XL=40, etc.
+    } else {
+      result += current;
+    }
+  }
+
+  if (result <= 0 || result > 3999) return null;
+  return result;
+}
+
+/**
+ * Reemplaza números romanos por arábigos en contextos seguros.
+ * Estrategia A: Con prefijo conocido (alta confianza) — incluye romanos de 1+ carácter.
+ * Estrategia B: Standalone con punto (confianza media) — solo romanos de 2+ caracteres.
+ */
+function convertRomanNumerals(text: string): string {
+  let result = text;
+
+  // Estrategia A: Prefijo conocido + número romano
+  // Ejemplo: "UNIDAD IV", "art. 82.III", "parágrafo II"
+  const prefixGroup = ROMAN_PREFIXES.join('|');
+  const prefixPattern = new RegExp(
+    `((?:${prefixGroup})\\s*\\.?)\\s*([IVXLCDM]{1,8})\\b`,
+    'gi'
+  );
+
+  result = result.replace(prefixPattern, (_match, prefix: string, roman: string) => {
+    const arabic = romanToArabic(roman);
+    if (arabic !== null) {
+      return `${prefix.trimEnd()} ${arabic}`;
+    }
+    return _match;
+  });
+
+  // Estrategia B: Standalone — romano de 2+ chars seguido de punto (inicio de sección)
+  // Ejemplo: "VI. LA LEGISLACIÓN ELECTORAL"
+  // Excluye letras sueltas (I., C., D.) para evitar falsos positivos
+  result = result.replace(
+    /(?<![a-zA-Z])([IVXLCDM]{2,8})\.(?=\s)/g,
+    (_match, roman: string) => {
+      const arabic = romanToArabic(roman);
+      if (arabic !== null) {
+        return `${arabic}.`;
+      }
+      return _match;
+    }
+  );
+
+  // Estrategia C: Romano después de punto decimal en referencias legales
+  // Ejemplo: "art. 82.III" → "art. 82.3"
+  result = result.replace(
+    /(\d)\.([IVXLCDM]{1,8})\b/g,
+    (_match, digit: string, roman: string) => {
+      const arabic = romanToArabic(roman);
+      if (arabic !== null) {
+        return `${digit}.${arabic}`;
+      }
+      return _match;
+    }
+  );
+
+  return result;
 }
