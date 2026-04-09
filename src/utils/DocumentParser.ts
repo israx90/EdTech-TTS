@@ -237,53 +237,36 @@ async function parsePdf(file: File): Promise<string> {
     }
 
     // Filtro 4: Acuchillado de notas bibliográficas en bloque
-    const bottomLines = pageLines.filter(l => l.relativeY <= 0.35);
-    const joinedBottomText = bottomLines.map(l => l.text).join(' ');
+    const bottomStartIndex = pageLines.findIndex(l => l.relativeY <= 0.40);
 
-    if (bottomLines.length > 0 && isBibliographicLine(joinedBottomText)) {
-      // Buscar el inicio de la cita dentro del arreglo general (desde el tercio inferior hacia abajo)
-      let cutIndex = -1;
-      for (let i = 0; i < pageLines.length; i++) {
-        if (pageLines[i].relativeY <= 0.35) {
-          // Buscamos patrones de inicio de nota al pie: números sueltos seguidos de mayúscula,
-          // o líneas separadoras (guiones), o apellidos en MAYÚSCULOS como inicio de línea.
-          if (/^\s*(\d+|[_]{2,}|[-]{3,})\s*/.test(pageLines[i].text) || /^\s*[A-ZÁÉÍÓÚÑ]{4,}/.test(pageLines[i].text)) {
-            
-            // FILTRO ESTRICTO DE ORACIÓN ABORTADA
-            if (i > 0) {
-               const prevLine = pageLines[i-1].text.trim();
-               const isAbruptCut = !/[.:;?!,"')\]]$/.test(prevLine);
-               const gap = Math.abs(pageLines[i-1].relativeY - pageLines[i].relativeY);
-               
-               // Si es corte abrupto, pero carece de un salto vertical evidente (>3.5%), es falso positivo
-               if (isAbruptCut && gap < 0.035) {
-                 continue; // Saltamos candidato, dejaría la oración flotando en el mismo párrafo
-               }
-            }
-
-            cutIndex = i;
-            break;
-          }
+    if (bottomStartIndex !== -1) {
+      let anchorIndex = -1;
+      
+      // Buscar la primera línea en la zona inferior que ES inconfundiblemente bibliografía
+      for (let i = bottomStartIndex; i < pageLines.length; i++) {
+        if (getBibliographicScore(pageLines[i].text) >= 2) {
+          anchorIndex = i;
+          break;
         }
       }
-      
-      // Si no hay un marcador de inicio obvio, buscamos el primer corte natural
-      // dentro del bloque del 35% inferior que NO mutile la oración principal.
-      if (cutIndex === -1) {
-        for (let i = 0; i < pageLines.length; i++) {
-          if (pageLines[i].relativeY <= 0.35) {
-            if (i > 0) {
-               const prevLine = pageLines[i-1].text.trim();
-               if (!/[.:;?!,"')\]]$/.test(prevLine)) continue;
-            }
-            cutIndex = i;
-            break;
+
+      if (anchorIndex !== -1) {
+        // Encontramos una línea fuertemente bibliográfica. 
+        // Ahora caminamos hacia atrás (hacia arriba) para hallar el VERDADERO inicio de la cita.
+        // Frecuentemente la 1ra línea ("1 D' AVIS") tiene poco score, pero la 2da ("Edit. Leyes, 1980") tiene mucho.
+        let cutIndex = anchorIndex;
+        
+        for (let j = anchorIndex - 1; j >= Math.max(bottomStartIndex, anchorIndex - 4); j--) {
+          const text = pageLines[j].text;
+          // Si la línea superior inicia con número de pie de página (ej. "1 Nombre"), guiones, o mayúsculas formales
+          if (/^\s*(\d+|[_]{2,}|[-]{3,})\s*/.test(text) || /^\s*[A-ZÁÉÍÓÚÑ]{4,}/.test(text)) {
+            cutIndex = j;
+            break; // Encontramos el inicio real
           }
         }
-      }
-      
-      if (cutIndex !== -1) {
-        pageLines.splice(cutIndex); // Cortamos desde aquí hasta el final de la hoja
+
+        // Cortar absolutamente todo desde cutIndex hacia abajo
+        pageLines.splice(cutIndex);
       }
     }
 
@@ -346,9 +329,9 @@ function isPageNumber(text: string): boolean {
 }
 
 /**
- * Detecta líneas que probablemente sean el inicio de una nota al pie bibliográfica
+ * Evalúa líneas para detectar peso de nota al pie bibliográfica
  */
-function isBibliographicLine(text: string): boolean {
+function getBibliographicScore(text: string): number {
   let score = 0;
   if (/ob\.?\s*cit\.?/i.test(text)) score += 2;
   if (/\b(pág[s]?\.?|ps\.?)\b/i.test(text)) score += 1;
@@ -358,7 +341,7 @@ function isBibliographicLine(text: string): boolean {
   const caps = text.match(/\b[A-ZÁÉÍÓÚÑ]{3,}\b/g);
   if (caps && caps.length >= 2) score += 1;
   
-  return score >= 2;
+  return score;
 }
 
 /**

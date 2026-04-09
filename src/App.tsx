@@ -21,8 +21,15 @@ interface BatchItem {
 // ═══════════════════════════════════════════
 // Release Notes / Changelog
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v2.6.4';
+const APP_VERSION = 'v2.6.5';
 const RELEASE_LOG = [
+  {
+    version: 'v2.6.5',
+    date: '2026-04-09',
+    changes: [
+      'PDF: Filtro "Bottom-Up Anchored Cut" para buscar retroactivamente inicios de citas académicas fragmentadas que carecen de marcadores bibliográficos en su primera línea.',
+    ],
+  },
   {
     version: 'v2.6.4',
     date: '2026-04-09',
