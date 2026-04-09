@@ -5,7 +5,11 @@ import mammoth from 'mammoth';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-export async function parseDocument(file: File): Promise<string> {
+export interface ParseOptions {
+  removeExtraneousText?: boolean;
+}
+
+export async function parseDocument(file: File, options: ParseOptions = { removeExtraneousText: true }): Promise<string> {
   const extension = file.name.split('.').pop()?.toLowerCase();
 
   switch (extension) {
@@ -16,7 +20,7 @@ export async function parseDocument(file: File): Promise<string> {
       return await parseDocx(file);
       
     case 'pdf':
-      return await parsePdf(file);
+      return await parsePdf(file, options);
       
     default:
       throw new Error(`Unsupported file type: ${extension}`);
@@ -139,7 +143,7 @@ interface TextItem {
   height: number;
 }
 
-async function parsePdf(file: File): Promise<string> {
+async function parsePdf(file: File, options: ParseOptions): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   
@@ -224,20 +228,25 @@ async function parsePdf(file: File): Promise<string> {
       const normalized = normalizeForComparison(lineText);
 
       // Filtro 1: Encabezado/pie repetido (comparación fuzzy)
-      if (relativeY >= headerThreshold && repeatedHeaders.has(normalized)) continue;
-      if (relativeY <= footerThreshold && repeatedFooters.has(normalized)) continue;
+      // * Solo si el usuario quiere remover texto extraño
+      if (options.removeExtraneousText !== false) {
+        if (relativeY >= headerThreshold && repeatedHeaders.has(normalized)) continue;
+        if (relativeY <= footerThreshold && repeatedFooters.has(normalized)) continue;
 
-      // Filtro 2: Número de página
-      if (isPageNumber(lineText)) continue;
+        // Filtro 2: Número de página
+        if (isPageNumber(lineText)) continue;
 
-      // Filtro 3: Texto muy corto en zona header/footer (cubre siglas institucionales)
-      if ((relativeY >= headerThreshold || relativeY <= footerThreshold) && lineText.length <= 10) continue;
+        // Filtro 3: Texto muy corto en zona header/footer (cubre siglas institucionales)
+        if ((relativeY >= headerThreshold || relativeY <= footerThreshold) && lineText.length <= 10) continue;
+      }
 
       pageLines.push({ text: lineText, relativeY });
     }
 
     // Filtro 4: Acuchillado de notas bibliográficas en bloque
-    const bottomStartIndex = pageLines.findIndex(l => l.relativeY <= 0.40);
+    // * Solo si el usuario quiere remover texto extraño
+    if (options.removeExtraneousText !== false) {
+      const bottomStartIndex = pageLines.findIndex(l => l.relativeY <= 0.40);
 
     if (bottomStartIndex !== -1) {
       let anchorIndex = -1;
@@ -269,6 +278,8 @@ async function parsePdf(file: File): Promise<string> {
         pageLines.splice(cutIndex);
       }
     }
+    }
+    // (Fin Filtro 4)
 
     if (pageLines.length > 0) {
       let pageText = '';

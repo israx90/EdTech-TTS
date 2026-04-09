@@ -21,8 +21,15 @@ interface BatchItem {
 // ═══════════════════════════════════════════
 // Release Notes / Changelog
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v2.6.5';
+const APP_VERSION = 'v2.6.6';
 const RELEASE_LOG = [
+  {
+    version: 'v2.6.6',
+    date: '2026-04-09',
+    changes: [
+      'Funcionalidad: Opcionalidad ("Modo Purista") para saltarse la eliminación destructiva de autores, encabezados, y páginas y permitir escucharlos íntegramente (Controlable mediante Checkbox en UI).',
+    ],
+  },
   {
     version: 'v2.6.5',
     date: '2026-04-09',
@@ -109,6 +116,9 @@ function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+
+  // Configuración de Purado PDF
+  const [removeExtraneousText, setRemoveExtraneousText] = useState(true);
 
   // Audio format based on provider
   const audioFormat = provider === 'kokoro' ? 'wav' : 'mp3';
@@ -241,7 +251,7 @@ function App() {
     // Extract text for each new file
     for (const item of newItems) {
       try {
-        const extractedText = await parseDocument(item.file);
+        const extractedText = await parseDocument(item.file, { removeExtraneousText });
         const wc = extractedText.split(/\s+/).filter(w => w.length > 0).length;
         setItems(prev => prev.map(i => 
           i.id === item.id 
@@ -457,11 +467,22 @@ function App() {
         {/* Left: Document Upload + Queue */}
         <div className="panel">
           <div className="panel-header">
-            <FileText size={20} className="text-cyber-teal" />
-            <span>Documentos</span>
-            {items.length > 0 && (
-              <span className="header-badge">{items.length}</span>
-            )}
+            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+              <FileText size={20} className="text-cyber-teal" />
+              <span>Documentos</span>
+              {items.length > 0 && (
+                <span className="header-badge">{items.length}</span>
+              )}
+            </div>
+            <label style={{marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', color: '#a1a1aa', cursor: 'pointer'}}>
+              <input 
+                type="checkbox" 
+                checked={removeExtraneousText} 
+                onChange={(e) => setRemoveExtraneousText(e.target.checked)}
+                style={{ accentColor: '#14b8a6', cursor: 'pointer' }}
+              />
+              Omitir Encabezados y Notas (PDF)
+            </label>
           </div>
           
           <div 
