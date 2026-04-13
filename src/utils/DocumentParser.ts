@@ -167,7 +167,9 @@ async function parsePdf(file: File, options: ParseOptions): Promise<string> {
   }
 
   // Fase 1.5: Detectar y omitir páginas de carátula
-  const pagesData = allPagesData.filter((pageData, idx) => !isCoverPage(pageData.items, idx));
+  const pagesData = options.removeExtraneousText !== false
+    ? allPagesData.filter((pageData, idx) => !isCoverPage(pageData.items, idx))
+    : allPagesData;
   const skippedCovers = allPagesData.length - pagesData.length;
   if (skippedCovers > 0) {
     console.log(`📄 PDF: ${skippedCovers} carátula(s) omitida(s)`);
@@ -381,15 +383,18 @@ function isCoverPage(items: TextItem[], pageIndex: number): boolean {
   const lines = groupItemsByLine(items);
   const lineCount = lines.length;
 
-  // Muy poco texto = carátula
-  if (totalText.length < 200) return true;
+  // Si tiene muchísimo texto, seguro no es una carátula normal
+  if (totalText.length > 600) return false;
+
+  // Muy poco texto (menos de 150 chars) = carátula o página vacía/puramente gráfica
+  if (totalText.length < 150) return true;
 
   // Muy pocas líneas = portada tipográfica
-  if (lineCount < 5) return true;
+  if (lineCount < 4) return true;
 
-  // Primera página sin oraciones completas (sin puntos) = portada
+  // Primera página sin oraciones completas (sin puntos evaluando 10 líneas) = portada
   if (pageIndex === 0) {
-    const firstLines = lines.slice(0, 4).map(l => l.text).join(' ');
+    const firstLines = lines.slice(0, 10).map(l => l.text).join(' ');
     if (!firstLines.includes('.')) return true;
   }
 

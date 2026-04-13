@@ -226,5 +226,23 @@ function convertRomanNumerals(text: string): string {
     }
   );
 
+  // Estrategia D: Romano invertido (Número + Prefijo)
+  // Ocurre frecuentemente en PDFs cuando el número está visualmente arriba de la palabra "Capítulo"
+  // Ejemplo: "X Capítulo" → "Capítulo 10"
+  const invertedPattern = new RegExp(
+    `\\b([IVXLCDM]{1,8})\\s+((?:${prefixGroup})\\b)`,
+    'gi'
+  );
+
+  result = result.replace(invertedPattern, (_match, roman: string, suffix: string) => {
+    const arabic = romanToArabic(roman);
+    if (arabic !== null) {
+      // Normalizar la capitalización ("capítulo" -> "Capítulo")
+      const suffixCapitalized = suffix.charAt(0).toUpperCase() + suffix.slice(1).toLowerCase();
+      return `${suffixCapitalized} ${arabic}`;
+    }
+    return _match;
+  });
+
   return result;
 }

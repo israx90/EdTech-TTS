@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { UploadCloud, FileText, Play, Pause, Download, CheckCircle2, Loader2, Music, Sparkles, Clock, Volume2, Square, Cpu, Globe, Mic, Server, Wifi, WifiOff, RefreshCw, X, Package, Trash2, Tag } from 'lucide-react';
 import { parseDocument } from './utils/DocumentParser';
 import { processTextToAudioBlob, playVoiceDemo, stopVoiceDemo, getWebSpeechVoices, checkServerHealth } from './utils/TTSProcessor';
+import { scanForForeignWords, type ScannedWord } from './utils/ForeignWordScanner';
 import JSZip from 'jszip';
 import './index.css';
 
@@ -21,8 +22,25 @@ interface BatchItem {
 // ═══════════════════════════════════════════
 // Release Notes / Changelog
 // ═══════════════════════════════════════════
-const APP_VERSION = 'v2.6.6';
+const APP_VERSION = 'v3.0.0';
 const RELEASE_LOG = [
+  {
+    version: 'v3.0.0',
+    date: '2026-04-13',
+    changes: [
+      '🌐 Voces Multilingüe: Emma y Andrew detectan automáticamente palabras en inglés y las pronuncian con acento nativo dentro del español.',
+      '🔀 Motor Two-Pass: Las voces españolas (Dalia, Jorge, etc.) ahora pronuncian palabras extranjeras marcadas con la voz inglesa Aria, recortando silencios inteligentemente.',
+      '🎵 Player de audio rediseñado: barra de progreso con relleno dinámico, thumb centrado, y diseño premium.',
+      '🎤 Demos de voz para voces multilingüe con texto que incluye palabras en inglés.',
+    ],
+  },
+  {
+    version: 'v2.6.7',
+    date: '2026-04-10',
+    changes: [
+      'Bugfix: El "Modo Purista" ahora respeta correctamente las primeras páginas (carátulas/portadas), evitando su omisión y permitiendo escuchar todo el texto de las páginas iniciales.',
+    ],
+  },
   {
     version: 'v2.6.6',
     date: '2026-04-09',
@@ -94,6 +112,13 @@ function App() {
   // Release modal
   const [showRelease, setShowRelease] = useState(false);
   
+  // Scanner / Dictionary state
+  const [foreignWords, setForeignWords] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem('edtech_foreign_words') || '[]'); } catch { return []; }
+  });
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scannedCandidates, setScannedCandidates] = useState<ScannedWord[]>([]);
+  
   const [provider, setProvider] = useState('edge-tts');
   const [voice, setVoice] = useState('es-MX-DaliaNeural');
   
@@ -127,6 +152,21 @@ function App() {
   const totalWords = items.reduce((sum, it) => sum + it.wordCount, 0);
   const doneCount = items.filter(i => i.status === 'done').length;
   const errorCount = items.filter(i => i.status === 'error').length;
+
+  // Scan for foreign words across all text segments
+  useEffect(() => {
+    if (items.length > 0) {
+      const allText = items.map(i => i.text).join(' ');
+      setScannedCandidates(scanForForeignWords(allText));
+    } else {
+      setScannedCandidates([]);
+    }
+  }, [items]);
+
+  // Persist foreignwords
+  useEffect(() => {
+    localStorage.setItem('edtech_foreign_words', JSON.stringify(foreignWords));
+  }, [foreignWords]);
 
   // Server wake logic
   const wakeServer = async () => {
@@ -306,6 +346,7 @@ function App() {
         const audioBlob = await processTextToAudioBlob(item.text, {
           provider,
           voice,
+          foreignWords,
           onProgress: (current, total) => {
             setItems(prev => prev.map(i => 
               i.id === item.id ? { ...i, progress: { current, total } } : i
@@ -463,6 +504,64 @@ function App() {
         </div>
       )}
 
+      {/* Foreign Words Scanner Modal */}
+      {isScannerOpen && (
+        <div className="release-overlay" onClick={() => setIsScannerOpen(false)}>
+          <div className="release-modal scanner-modal" onClick={e => e.stopPropagation()}>
+            <div className="release-modal-header" style={{ borderBottom: '1px solid #27272a' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Globe size={18} className="text-cyber-teal" />
+                <span>Extranjerismos Detectados</span>
+              </div>
+              <button className="release-close-btn" onClick={() => setIsScannerOpen(false)}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="release-modal-body" style={{ padding: '1rem' }}>
+              <p style={{ fontSize: '0.85rem', color: '#a1a1aa', marginBottom: '1rem', lineHeight: 1.4 }}>
+                Selecciona las palabras que deseas que Azure pronuncie con <strong>reglas de pronunciación nativa en inglés</strong>. Esto evitará que la voz española las lea literalmente pero mantendrá el acento de la voz configurada.
+              </p>
+              
+              {scannedCandidates.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: '#52525b', fontSize: '0.9rem' }}>
+                  No se detectaron palabras extranjeras.
+                </div>
+              ) : (
+                <div className="scanner-grid">
+                  {scannedCandidates.map((cand, idx) => {
+                    const isSelected = foreignWords.includes(cand.word);
+                    return (
+                      <label 
+                        key={idx} 
+                        className={`scanner-card ${isSelected ? 'selected' : ''} ${cand.isHighlyLikelyEnglish ? 'highly-likely' : ''}`}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={isSelected}
+                          onChange={(e) => {
+                            if (e.target.checked) setForeignWords(prev => [...prev, cand.word]);
+                            else setForeignWords(prev => prev.filter(w => w !== cand.word));
+                          }}
+                          style={{ display: 'none' }}
+                        />
+                        <span className="scanner-word">{cand.word}</span>
+                        <span className="scanner-count">x{cand.count}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', padding: '1rem', borderTop: '1px solid #27272a' }}>
+              <button className="btn btn-secondary" onClick={() => setIsScannerOpen(false)} style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}>
+                <CheckCircle2 size={14} />
+                Guardar Selección
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid-2">
         {/* Left: Document Upload + Queue */}
         <div className="panel">
@@ -481,8 +580,19 @@ function App() {
                 onChange={(e) => setRemoveExtraneousText(e.target.checked)}
                 style={{ accentColor: '#14b8a6', cursor: 'pointer' }}
               />
-              Omitir Encabezados y Notas (PDF)
+              Omitir Encabezados/Notas
             </label>
+            {scannedCandidates.length > 0 && (
+              <button 
+                className="btn btn-secondary" 
+                style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem', backgroundColor: foreignWords.length > 0 ? '#14b8a620' : '#27272a', borderColor: foreignWords.length > 0 ? '#14b8a650' : 'transparent', color: foreignWords.length > 0 ? '#5eead4' : '#a1a1aa' }}
+                onClick={() => setIsScannerOpen(true)}
+              >
+                <Globe size={12} />
+                Inglés ({scannedCandidates.length})
+                {foreignWords.length > 0 && ` [${foreignWords.length} ✓]`}
+              </button>
+            )}
           </div>
           
           <div 
@@ -664,6 +774,10 @@ function App() {
               <select className="form-select voice-select" value={voice} onChange={e => setVoice(e.target.value)}>
                 {provider === 'edge-tts' && (
                   <>
+                    <optgroup label="🌐 Multilingüe (Español + Inglés Nativo)">
+                      <option value="en-US-EmmaMultilingualNeural">Emma (Femenino - Multilingüe)</option>
+                      <option value="en-US-AndrewMultilingualNeural">Andrew (Masculino - Multilingüe)</option>
+                    </optgroup>
                     <optgroup label="Español (México)">
                       <option value="es-MX-DaliaNeural">Dalia (Femenino - Premium)</option>
                       <option value="es-MX-JorgeNeural">Jorge (Masculino - Dinámico)</option>
@@ -785,7 +899,7 @@ function App() {
                   else audioRef.current.play();
                   setIsPlaying(!isPlaying);
                 }}>
-                  {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                  {isPlaying ? <Pause size={16} /> : <Play size={16} style={{ marginLeft: 2 }} />}
                 </button>
                 <span className="player-time">{formatTime(currentTime)}</span>
                 <div className="player-track">
@@ -801,6 +915,11 @@ function App() {
                       setCurrentTime(t);
                     }}
                     className="player-seek"
+                    style={{
+                      background: duration
+                        ? `linear-gradient(to right, rgba(94,234,212,0.5) 0%, rgba(94,234,212,0.5) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.08) ${(currentTime / duration) * 100}%, rgba(255,255,255,0.08) 100%)`
+                        : 'rgba(255,255,255,0.08)'
+                    }}
                   />
                 </div>
                 <span className="player-time">{formatTime(duration)}</span>

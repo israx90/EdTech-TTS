@@ -19,6 +19,8 @@ const DEMO_TEXT = 'Hola, esta es una demostración de mi voz. Puedo leer documen
 
 // Edge TTS voices to generate demos for
 const EDGE_VOICES = [
+  'en-US-EmmaMultilingualNeural',
+  'en-US-AndrewMultilingualNeural',
   'es-MX-DaliaNeural',
   'es-MX-JorgeNeural',
   'es-AR-ElenaNeural',

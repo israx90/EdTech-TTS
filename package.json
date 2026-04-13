@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "start": "node server.mjs",
     "deploy": "gh-pages -d dist",
-    "generate-demos": "node scripts/generate-demos.mjs"
+    "generate-demos": "node scripts/generate-demos.mjs",
+    "postinstall": "node scripts/patch-edge-tts.mjs"
   },
   "dependencies": {
     "cors": "^2.8.6",

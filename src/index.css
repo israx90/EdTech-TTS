@@ -512,29 +512,33 @@ body {
 .audio-console {
   background-color: var(--surface-slate);
   border-radius: var(--radius-md);
-  padding: 1.5rem;
+  padding: 1.25rem;
   border: 1px solid var(--border-color);
   margin-top: 1.5rem;
 }
 
 .file-tag {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--cyber-teal);
   background-color: var(--cyber-teal-alpha);
-  padding: 0.4rem 0.6rem;
+  padding: 0.35rem 0.6rem;
   border-radius: 4px;
   display: inline-block;
   border: 1px solid rgba(59, 130, 246, 0.3);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Custom Audio Player */
+/* Custom Audio Player — Premium Seekbar */
 .custom-player {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background-color: var(--surface-slate-lighter);
+  gap: 0.65rem;
+  padding: 0.65rem 0.85rem;
+  background: linear-gradient(180deg, rgba(255,255,255,0.025) 0%, transparent 100%);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sharp);
 }
@@ -543,20 +547,21 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
   border-radius: 50%;
   border: none;
   background: linear-gradient(135deg, var(--cyber-teal), rgba(37, 99, 235, 0.9));
   color: white;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .player-btn:hover {
   transform: scale(1.08);
-  box-shadow: 0 0 12px var(--cyber-teal-alpha);
+  box-shadow: 0 0 14px var(--cyber-teal-alpha);
 }
 
 .player-btn:active {
@@ -565,66 +570,74 @@ body {
 
 .player-time {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
-  min-width: 36px;
+  min-width: 32px;
   text-align: center;
   user-select: none;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 .player-track {
   flex: 1;
   display: flex;
   align-items: center;
+  min-width: 0;
+  height: 20px;
 }
 
 .player-seek {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
+  height: 5px;
+  border-radius: 3px;
   outline: none;
   cursor: pointer;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 0;
+  padding: 0;
 }
 
 .player-seek::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
   background: var(--cyber-teal);
-  border: 2px solid var(--surface-slate-lighter);
-  box-shadow: 0 0 6px var(--cyber-teal-alpha);
+  border: 2px solid var(--bg-slate);
+  box-shadow: 0 0 8px var(--cyber-teal-alpha), 0 0 3px rgba(0,0,0,0.4);
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  margin-top: -4px;
 }
 
 .player-seek::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+  transform: scale(1.3);
+  box-shadow: 0 0 14px var(--cyber-teal-alpha), 0 0 3px rgba(0,0,0,0.4);
 }
 
 .player-seek::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
   background: var(--cyber-teal);
-  border: 2px solid var(--surface-slate-lighter);
-  box-shadow: 0 0 6px var(--cyber-teal-alpha);
+  border: 2px solid var(--bg-slate);
+  box-shadow: 0 0 8px var(--cyber-teal-alpha);
   cursor: pointer;
 }
 
 .player-seek::-webkit-slider-runnable-track {
-  height: 4px;
-  border-radius: 2px;
+  height: 5px;
+  border-radius: 3px;
 }
 
 .player-seek::-moz-range-track {
-  height: 4px;
+  height: 5px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
+  border-radius: 3px;
   border: none;
 }
 
@@ -1088,4 +1101,76 @@ body {
 
 .release-entry.latest .release-changes li {
   color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════ */
+/* Foreign Words Scanner                          */
+/* ═══════════════════════════════════════════════ */
+.scanner-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.6rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.scanner-grid::-webkit-scrollbar {
+  width: 4px;
+}
+.scanner-grid::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.scanner-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--surface-slate-lighter);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.scanner-card:hover {
+  background-color: rgba(255,255,255,0.03);
+  border-color: var(--border-focus);
+}
+
+.scanner-card.selected {
+  background-color: var(--cyber-teal-alpha);
+  border-color: var(--cyber-teal);
+}
+
+.scanner-card.highly-likely:not(.selected) {
+  border-left: 2px solid rgba(59, 130, 246, 0.5);
+}
+
+.scanner-word {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.scanner-card.selected .scanner-word {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.scanner-count {
+  font-size: 0.65rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: #71717a;
+  background: rgba(255,255,255,0.05);
+  padding: 0.1rem 0.3rem;
+  border-radius: 4px;
+}
+
+.scanner-card.selected .scanner-count {
+  color: var(--cyber-teal);
+  background: rgba(59, 130, 246, 0.15);
 }

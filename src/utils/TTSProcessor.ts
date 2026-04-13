@@ -3,6 +3,7 @@ import { prepareTextForNarration } from './NarrativePreprocessor';
 export interface TTSOptions {
   provider?: string;
   voice?: string;
+  foreignWords?: string[];
   onProgress?: (progress: number, total: number) => void;
   onModelLoading?: (status: string) => void;
 }
@@ -11,8 +12,8 @@ export interface TTSOptions {
 // Auto-detect API URL: localhost for dev, Render for production
 // ═══════════════════════════════════════════════
 const getApiBaseUrl = (): string => {
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:3001';
+  if (import.meta.env?.DEV) {
+    return ''; // Uses Vite proxy
   }
   // Production: Render.com server URL
   // Update this after deploying to Render
@@ -52,9 +53,22 @@ async function processEdgeTTS(text: string, options: TTSOptions): Promise<Blob> 
   const chunks = chunkText(text, 2500);
   const audioBlobs: Blob[] = [];
 
+  // Sort foreign words by length descending to match longest phrases first
+  const sortedDict = options.foreignWords ? [...options.foreignWords].sort((a, b) => b.length - a.length) : [];
+
   for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
+    let chunk = chunks[i];
     if (!chunk.trim()) continue;
+
+    // Apply <swap> tags for foreign words → triggers Two-Pass on the server.
+    // Skip for Multilingual voices since they pronounce English natively.
+    const isMultilingual = (options.voice || '').includes('Multilingual');
+    if (sortedDict.length > 0 && !isMultilingual) {
+      for (const word of sortedDict) {
+        const regex = new RegExp(`\\b(${word})\\b`, 'gi');
+        chunk = chunk.replace(regex, '<swap>$1</swap>');
+      }
+    }
 
     options.onProgress?.(i, chunks.length);
 
